@@ -1,6 +1,9 @@
 import cv2 
+from detector.person_detector import PersonDetector
 
 def main ():
+
+    detector = PersonDetector()
 
     # 웹캠에서 영상을 받아오는 객체를 만든다. 0은 첫번째로 연결된 카메라다.
     cap = cv2.VideoCapture(0)
@@ -21,8 +24,37 @@ def main ():
             print("프레임을 읽을 수 없습니다.")
             break
         
-        # 윈도우 창을 띄워서 프레임을 화면에 출력하는 것이다. 
-        cv2.imshow('Webcam Test', frame)
+        # 현재 frame을 YOLO에 넣어서 사람 탐지
+        detections = detector.detect(frame)
+        
+        for detection in detections:
+
+            x1, y1, x2, y2 = detection["bbox"]
+
+            confidence = detection["confidence"]
+
+            cv2.rectangle(
+                frame,
+                (x1, y1),
+                (x2, y2),
+                (0, 255, 0),
+                2
+            )
+
+            label = f"Person {confidence:.2f}"
+
+            # confidence 출력
+            cv2.putText(
+                frame,
+                label,
+                (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2
+            )
+
+        cv2.imshow("Vision Risk Detection System", frame)
 
         # ESC 누르면 종료 
         if cv2.waitKey(1) & 0xFF == 27:
