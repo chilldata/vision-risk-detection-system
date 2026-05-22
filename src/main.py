@@ -1,95 +1,124 @@
-import cv2 
+import cv2
+
 from detector.person_detector import PersonDetector
 from detector.risk_calculator import RiskCalculator
 
-def main ():
+from utils.draw_utils import (
+    draw_detection,
+    draw_status_panel
+)
+
+
+def get_highest_risk(
+    risk_results
+):
+
+    if not risk_results:
+        return "SAFE"
+
+    priority = {
+        "SAFE": 0,
+        "WARNING": 1,
+        "STOP": 2
+    }
+
+    highest = max(
+        risk_results,
+        key=lambda x: priority[x]
+    )
+
+    return highest
+
+
+def main():
 
     detector = PersonDetector()
+
     risk_calculator = RiskCalculator()
 
-    # 웹캠에서 영상을 받아오는 객체를 만든다. 0은 첫번째로 연결된 카메라다.
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(
+        0,
+        cv2.CAP_DSHOW
+    )
 
-    # 웹캠 연결 실패 확인 
     if not cap.isOpened():
         print("웹캠을 열 수 없습니다.")
         return
-    
+
     while True:
 
-        # ret → 읽기 성공 여부 (True/False)
-        # frame → 실제 이미지 데이터 (numpy 배열)
         ret, frame = cap.read()
 
-        # 프레임 읽기 실패
-        if not ret: 
+        if not ret:
             print("프레임을 읽을 수 없습니다.")
             break
-        
-        # 현재 frame을 YOLO에 넣어서 사람 탐지
+
         detections = detector.detect(frame)
-        
+
+        risk_results = []
+
         for detection in detections:
 
-            x1, y1, x2, y2 = detection["bbox"]
+            bbox = detection["bbox"]
 
             confidence = detection["confidence"]
 
             # 위험도 계산
             risk_result = risk_calculator.calculate(
-                detection["bbox"],
+                bbox,
                 frame.shape
             )
 
-            # 위험 상태
             risk_level = risk_result["risk_level"]
 
-            # 상태별 색상
             color = risk_result["color"]
 
-             # 화면 점유율 (%)
             occupancy_ratio = (
                 risk_result["occupancy_ratio"] * 100
             )
 
-            # Bounding Box 그리기
-            cv2.rectangle(
-                frame,
-                (x1, y1),
-                (x2, y2),
-                color,
-                2
+            risk_results.append(
+                risk_level
             )
 
-            # 화면 출력 텍스트
+            # 출력 텍스트
             label = (
                 f"{risk_level} | "
                 f"{occupancy_ratio:.1f}% | "
                 f"{confidence:.2f}"
             )
 
-            # 텍스트 출력
-            cv2.putText(
+            # Bounding Box 출력
+            draw_detection(
                 frame,
+                bbox,
                 label,
-                (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color,
-                2
+                color
             )
 
-        cv2.imshow("Vision Risk Detection System", frame)
+        # 최고 위험 상태 계산
+        highest_risk = get_highest_risk(
+            risk_results
+        )
 
-        # ESC 누르면 종료 
+        # 상단 상태 패널 출력
+        draw_status_panel(
+            frame,
+            highest_risk,
+            len(detections)
+        )
+
+        cv2.imshow(
+            "Vision Risk Detection System",
+            frame
+        )
+
         if cv2.waitKey(1) & 0xFF == 27:
             break
-    
-    # 사용한 자원 반납한다.
-    # 카메라는 하드웨어 자원이라 명시적으로 해제하지 않으면 다른 프로그램이 사용하지 못한다.
+
     cap.release()
     cv2.destroyAllWindows()
 
-# 자원 해제 
+
 if __name__ == "__main__":
     main()
