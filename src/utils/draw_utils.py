@@ -34,24 +34,28 @@ def draw_detection(
 def draw_status_panel(
     frame,
     risk_level,
-    person_count
+    person_count,
+    action
 ):
 
     # 상태별 색상
     if risk_level == "SAFE":
+
         color = (0, 255, 0)
 
     elif risk_level == "WARNING":
+
         color = (0, 255, 255)
 
     else:
+
         color = (0, 0, 255)
 
-    # 상단 패널 배경
+    # 상단 상태 패널 배경
     cv2.rectangle(
         frame,
         (0, 0),
-        (frame.shape[1], 50),
+        (frame.shape[1], 60),
         (30, 30, 30),
         -1
     )
@@ -59,15 +63,17 @@ def draw_status_panel(
     # 상태 텍스트
     status_text = (
         f"STATUS : {risk_level} | "
-        f"PERSON COUNT : {person_count}"
+        f"ACTION : {action} | "
+        f"COUNT : {person_count}"
     )
 
+    # 상태 텍스트 출력
     cv2.putText(
         frame,
         status_text,
-        (20, 35),
+        (20, 38),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
+        0.55,
         color,
         2
     )

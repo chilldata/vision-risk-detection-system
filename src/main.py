@@ -9,12 +9,18 @@ from utils.draw_utils import (
 )
 
 
-def get_highest_risk(
-    risk_results
+def get_overall_risk(
+    risk_results,
+    person_count
 ):
 
+    # 사람이 없으면 SAFE
     if not risk_results:
-        return "SAFE"
+
+        return {
+            "risk_level": "SAFE",
+            "action": "MOVE"
+        }
 
     priority = {
         "SAFE": 0,
@@ -22,12 +28,45 @@ def get_highest_risk(
         "STOP": 2
     }
 
-    highest = max(
+    # 가장 위험한 상태 선택
+    highest_risk = max(
         risk_results,
         key=lambda x: priority[x]
     )
 
-    return highest
+    # WARNING 사람이 3명 이상이면 STOP
+    warning_count = risk_results.count(
+        "WARNING"
+    )
+
+    if warning_count >= 3:
+
+        return {
+            "risk_level": "STOP",
+            "action": "STOP"
+        }
+
+    # 상태별 행동 결정
+    if highest_risk == "SAFE":
+
+        return {
+            "risk_level": "SAFE",
+            "action": "MOVE"
+        }
+
+    elif highest_risk == "WARNING":
+
+        return {
+            "risk_level": "WARNING",
+            "action": "SLOW"
+        }
+
+    else:
+
+        return {
+            "risk_level": "STOP",
+            "action": "STOP"
+        }
 
 
 def main():
@@ -53,7 +92,10 @@ def main():
             print("프레임을 읽을 수 없습니다.")
             break
 
-        detections = detector.detect(frame)
+        # 사람 탐지
+        detections = detector.detect(
+            frame
+        )
 
         risk_results = []
 
@@ -69,14 +111,21 @@ def main():
                 frame.shape
             )
 
-            risk_level = risk_result["risk_level"]
+            risk_level = risk_result[
+                "risk_level"
+            ]
 
-            color = risk_result["color"]
+            color = risk_result[
+                "color"
+            ]
 
             occupancy_ratio = (
-                risk_result["occupancy_ratio"] * 100
+                risk_result[
+                    "occupancy_ratio"
+                ] * 100
             )
 
+            # 전체 위험도 계산용 저장
             risk_results.append(
                 risk_level
             )
@@ -96,16 +145,18 @@ def main():
                 color
             )
 
-        # 최고 위험 상태 계산
-        highest_risk = get_highest_risk(
-            risk_results
+        # 전체 위험도 계산
+        overall_result = get_overall_risk(
+            risk_results,
+            len(detections)
         )
 
         # 상단 상태 패널 출력
         draw_status_panel(
             frame,
-            highest_risk,
-            len(detections)
+            overall_result["risk_level"],
+            len(detections),
+            overall_result["action"]
         )
 
         cv2.imshow(
@@ -117,6 +168,7 @@ def main():
             break
 
     cap.release()
+
     cv2.destroyAllWindows()
 
 
