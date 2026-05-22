@@ -1,9 +1,11 @@
 import cv2 
 from detector.person_detector import PersonDetector
+from detector.risk_calculator import RiskCalculator
 
 def main ():
 
     detector = PersonDetector()
+    risk_calculator = RiskCalculator()
 
     # 웹캠에서 영상을 받아오는 객체를 만든다. 0은 첫번째로 연결된 카메라다.
     cap = cv2.VideoCapture(0)
@@ -33,24 +35,47 @@ def main ():
 
             confidence = detection["confidence"]
 
+            # 위험도 계산
+            risk_result = risk_calculator.calculate(
+                detection["bbox"],
+                frame.shape
+            )
+
+            # 위험 상태
+            risk_level = risk_result["risk_level"]
+
+            # 상태별 색상
+            color = risk_result["color"]
+
+             # 화면 점유율 (%)
+            occupancy_ratio = (
+                risk_result["occupancy_ratio"] * 100
+            )
+
+            # Bounding Box 그리기
             cv2.rectangle(
                 frame,
                 (x1, y1),
                 (x2, y2),
-                (0, 255, 0),
+                color,
                 2
             )
 
-            label = f"Person {confidence:.2f}"
+            # 화면 출력 텍스트
+            label = (
+                f"{risk_level} | "
+                f"{occupancy_ratio:.1f}% | "
+                f"{confidence:.2f}"
+            )
 
-            # confidence 출력
+            # 텍스트 출력
             cv2.putText(
                 frame,
                 label,
                 (x1, y1 - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
-                (0, 255, 0),
+                color,
                 2
             )
 
